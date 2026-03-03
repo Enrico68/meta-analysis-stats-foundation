@@ -1,0 +1,208 @@
+---
+title: "04 · Eterogeneità — Q, I², τ²"
+subtitle: "Il cuore statistico della meta-analisi"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    theme: cosmo
+    highlight-style: github
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(ggplot2)
+```
+
+# 🎯 Obiettivo
+
+L'eterogeneità risponde alla domanda: **gli studi stanno misurando lo stesso
+effetto o effetti diversi?** Borenstein (2021) dedica interi capitoli a questo,
+perché capire l'eterogeneità è capire la meta-analisi.
+
+---
+
+# 1️⃣ Il Problema: Variazione Osservata vs Vera Eterogeneità
+
+Anche se tutti gli studi misurassero lo *stesso* effetto vero (eterogeneità = 0),
+i risultati differirebbero per **errore campionario**.
+Il trucco è separare queste due fonti di variazione.
+
+```{r variazione-demo}
+set.seed(1)
+k <- 10   # numero di studi
+theta_vero <- 0.5   # effetto vero unico (modello fixed)
+
+# Studi con diversa numerosità
+n_studi <- c(20, 80, 35, 60, 25, 100, 45, 30, 70, 55)
+se_i    <- 1 / sqrt(n_studi)   # SE approssimativo
+yi      <- rnorm(k, mean = theta_vero, sd = se_i)
+
+df_base <- data.frame(
+  studio = paste0("S", 1:k), yi = yi, se = se_i,
+  lb = yi - 1.96*se_i, ub = yi + 1.96*se_i, n = n_studi
+)
+
+ggplot(df_base, aes(x = yi, y = reorder(studio, yi))) +
+  geom_vline(xintercept = theta_vero, lty = 2, color = "#2A9D8F", linewidth = 1) +
+  geom_pointrange(aes(xmin = lb, xmax = ub), color = "#2E86AB") +
+  annotate("text", x = theta_vero + 0.05, y = 1,
+           label = "θ vero = 0.5", color = "#2A9D8F", fontface = "bold") +
+  labs(title = "Variazione tra studi per puro errore campionario",
+       subtitle = "(Stessi θ vero, solo noise campionario)",
+       x = "Effect size stimato", y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+---
+
+# 2️⃣ La Statistica Q di Cochran
+
+Q misura la variazione totale osservata tra gli studi, pesata per la precisione.
+
+$$Q = \sum_{i=1}^{k} w_i (\hat{\theta}_i - \bar{\theta})^2$$
+
+```{r cochran-q}
+# Calcolo manuale di Q
+wi       <- 1 / df_base$se^2
+theta_fe <- sum(wi * df_base$yi) / sum(wi)   # summary fixed-effect
+Q        <- sum(wi * (df_base$yi - theta_fe)^2)
+df_Q     <- k - 1
+p_Q      <- pchisq(Q, df = df_Q, lower.tail = FALSE)
+
+cat("=== Test di Cochran Q ===\n")
+cat("Q =", round(Q, 3), "\n")
+cat("df =", df_Q, "\n")
+cat("p-value =", round(p_Q, 4), "\n")
+cat("\nInterpretazione (p < 0.10 = eterogeneità significativa):\n")
+cat(ifelse(p_Q < 0.10,
+           "⚠️  Eterogeneità statisticamente significativa",
+           "✅ Nessuna eterogeneità significativa rilevata"), "\n")
+```
+
+> ⚠️ **Limitazione del test Q**: ha bassa potenza con pochi studi (k < 5)
+> e troppa potenza con tanti studi. Per questo si usano anche I² e τ².
+
+---
+
+# 3️⃣ L'I² di Higgins
+
+I² esprime la **proporzione** della variazione totale dovuta a vera eterogeneità
+(non a errore campionario).
+
+$$I^2 = \max\left(0, \frac{Q - (k-1)}{Q}\right) \times 100\%$$
+
+```{r i-quadro}
+I2 <- max(0, (Q - df_Q) / Q) * 100
+
+cat("I² =", round(I2, 1), "%\n\n")
+cat("Riferimenti (Higgins 2003):\n")
+cat("  0-25%:  Eterogeneità bassa\n")
+cat("  25-50%: Eterogeneità moderata\n")
+cat("  50-75%: Eterogeneità sostanziale\n")
+cat("  >75%:   Eterogeneità considerevole\n")
+```
+
+```{r i2-gauge}
+# Visualizzazione I²
+df_gauge <- data.frame(
+  livello = c("Bassa\n(0-25%)", "Moderata\n(25-50%)",
+              "Sostanziale\n(50-75%)", "Considerevole\n(>75%)"),
+  min_val = c(0, 25, 50, 75), max_val = c(25, 50, 75, 100),
+  colore  = c("#2A9D8F", "#F4A261", "#E76F51", "#E63946")
+)
+
+ggplot(df_gauge) +
+  geom_rect(aes(xmin = min_val, xmax = max_val, ymin = 0, ymax = 1,
+                fill = colore), alpha = 0.7) +
+  geom_vline(xintercept = I2, color = "#264653", linewidth = 2) +
+  annotate("text", x = I2, y = 1.15, label = paste0("I² = ", round(I2, 1), "%"),
+           fontface = "bold", size = 5) +
+  scale_fill_identity() +
+  geom_text(data = df_gauge,
+            aes(x = (min_val+max_val)/2, y = 0.5, label = livello),
+            size = 3.5, fontface = "bold", color = "white") +
+  labs(title = "I²: dove si colloca la nostra meta-analisi?",
+       x = "I² (%)", y = NULL) +
+  scale_x_continuous(breaks = c(0, 25, 50, 75, 100)) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+
+---
+
+# 4️⃣ τ² (Tau-Squared) — La Vera Varianza tra Studi
+
+τ² (tau-squared) è la **varianza dei veri effetti** tra gli studi.
+È il parametro fondamentale del modello random-effects.
+
+$$\tau^2 = \frac{Q - (k-1)}{C}$$
+
+dove $C = \sum w_i - \frac{\sum w_i^2}{\sum w_i}$
+
+```{r tau-squared}
+# Stimatore DerSimonian-Laird (il più usato)
+C   <- sum(wi) - (sum(wi^2) / sum(wi))
+tau2_DL <- max(0, (Q - df_Q) / C)
+tau_DL  <- sqrt(tau2_DL)
+
+cat("=== Stima τ² (DerSimonian-Laird) ===\n")
+cat("τ² =", round(tau2_DL, 4), "\n")
+cat("τ  =", round(tau_DL, 4), "(deviazione standard dei veri effetti)\n")
+cat("\nInterpretazione:\n")
+cat("Se τ = 0: tutti gli studi misurano lo stesso effetto (fixed-effect OK)\n")
+cat("Se τ > 0: gli effetti veri variano tra studi (random-effects necessario)\n")
+```
+
+```{r tau-pred-interval}
+# Prediction interval: dove cade il 95% dei veri effetti?
+theta_re <- sum((wi / (1/tau2_DL + wi)) * df_base$yi) /
+            sum(wi / (1/tau2_DL + wi))
+
+se_re  <- 1 / sqrt(sum(wi / (1/tau2_DL + wi)))
+pi_lb  <- theta_re - 1.96 * sqrt(se_re^2 + tau2_DL)
+pi_ub  <- theta_re + 1.96 * sqrt(se_re^2 + tau2_DL)
+
+cat("\n=== Prediction Interval (Borenstein 2021) ===\n")
+cat("Summary effect RE:", round(theta_re, 3), "\n")
+cat("95% PI: [", round(pi_lb, 3), ",", round(pi_ub, 3), "]\n")
+cat("\nInterpretazione: nel 95% dei contesti clinici futuri,\n")
+cat("l'effetto vero cadrà in questo intervallo.\n")
+```
+
+---
+
+# 5️⃣ Riepilogo: Q, I², τ² a Confronto
+
+```{r riepilogo-table}
+data.frame(
+  Statistica = c("Q di Cochran", "I²", "τ²", "τ (tau)"),
+  Cosa_misura = c(
+    "Variazione totale ponderata",
+    "% variazione dovuta a vera eterogeneità",
+    "Varianza dei veri effetti tra studi",
+    "SD dei veri effetti (stessa unità di θ)"
+  ),
+  Limite = c(
+    "Dipende da k e n (bassa potenza con pochi studi)",
+    "Non dipende dall'incertezza di stima",
+    "Stimatore impreciso con k piccolo",
+    "Interpretabile clinicamente"
+  )
+) |> knitr::kable(caption = "Le tre misure di eterogeneità")
+```
+
+---
+
+# ➡️ Prossimo Notebook
+
+**`05_modelli_fixed_random.qmd`** — Fixed vs Random effects: quando usare
+quale modello e come interpretare i risultati.

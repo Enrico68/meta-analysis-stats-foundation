@@ -1,0 +1,228 @@
+---
+title: "05 · Modelli Fixed vs Random Effects"
+subtitle: "La scelta che definisce ogni meta-analisi"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    theme: cosmo
+    highlight-style: github
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(ggplot2)
+```
+
+# 🎯 Obiettivo
+
+La scelta tra fixed e random effects non è tecnica: è **concettuale**.
+Riflette la domanda di ricerca e le assunzioni sul mondo reale.
+
+---
+
+# 1️⃣ Il Modello Fixed-Effect
+
+**Assunzione**: esiste un **unico** effetto vero θ. Tutti gli studi
+stimano lo stesso θ, e le differenze sono solo errore campionario.
+
+$$\hat{\theta}_i = \theta + \epsilon_i, \quad \epsilon_i \sim \mathcal{N}(0, \sigma_i^2)$$
+
+```{r fixed-effect}
+# Dataset: 6 studi, modello fixed
+set.seed(10)
+k <- 6
+theta_true <- 0.4   # unico effetto vero
+
+studi <- data.frame(
+  studio = paste("Studio", LETTERS[1:k]),
+  yi     = rnorm(k, theta_true, 0.15),
+  sei    = runif(k, 0.08, 0.22)
+) |> mutate(wi = 1/sei^2,
+            lb = yi - 1.96*sei, ub = yi + 1.96*sei)
+
+# Summary fixed-effect
+theta_fe <- sum(studi$wi * studi$yi) / sum(studi$wi)
+se_fe    <- 1 / sqrt(sum(studi$wi))
+z_fe     <- theta_fe / se_fe
+p_fe     <- 2 * pnorm(-abs(z_fe))
+
+cat("=== Fixed-Effect Model ===\n")
+cat("Summary θ:", round(theta_fe, 3), "\n")
+cat("SE:        ", round(se_fe, 3), "\n")
+cat("IC 95%:   [", round(theta_fe - 1.96*se_fe, 3), ",",
+                   round(theta_fe + 1.96*se_fe, 3), "]\n")
+cat("z:         ", round(z_fe, 3), "\n")
+cat("p-value:   ", round(p_fe, 4), "\n")
+```
+
+---
+
+# 2️⃣ Il Modello Random-Effects
+
+**Assunzione**: gli studi provengono da una distribuzione di effetti veri.
+Ogni studio ha il *suo* θᵢ vero, estratto da N(μ, τ²).
+
+$$\hat{\theta}_i = \mu + u_i + \epsilon_i$$
+
+- $\mu$ = effetto medio della distribuzione di effetti
+- $u_i \sim \mathcal{N}(0, \tau^2)$ = deviazione dello studio i dall'effetto medio
+- $\epsilon_i \sim \mathcal{N}(0, \sigma_i^2)$ = errore campionario
+
+```{r random-effects}
+# Aggiungiamo eterogeneità reale
+tau2 <- 0.06   # vera varianza tra studi
+
+# Studi con effetti veri diversi
+studi_re <- data.frame(
+  studio      = paste("Studio", LETTERS[1:k]),
+  theta_i     = rnorm(k, 0.4, sqrt(tau2)),   # effetti veri distinti
+  sei         = runif(k, 0.08, 0.22)
+) |>
+  mutate(
+    yi = rnorm(k, theta_i, sei),   # osservato = vero + errore
+    wi_star = 1 / (sei^2 + tau2),  # pesi RE includono tau2
+    lb = yi - 1.96*sei, ub = yi + 1.96*sei
+  )
+
+# Summary random-effects (DerSimonian-Laird semplificato)
+theta_re <- sum(studi_re$wi_star * studi_re$yi) / sum(studi_re$wi_star)
+se_re    <- 1 / sqrt(sum(studi_re$wi_star))
+
+cat("=== Random-Effects Model ===\n")
+cat("τ² assunto:   ", tau2, "\n")
+cat("Summary μ:    ", round(theta_re, 3), "\n")
+cat("SE:            ", round(se_re, 3), "\n")
+cat("IC 95%:       [", round(theta_re - 1.96*se_re, 3), ",",
+                       round(theta_re + 1.96*se_re, 3), "]\n")
+cat("\nNota: IC più ampio rispetto al Fixed-Effect,\n")
+cat("perché incorpora l'incertezza su τ²\n")
+```
+
+---
+
+# 3️⃣ Confronto Visuale: Fixed vs Random
+
+```{r confronto-visuale}
+# Confronto dei pesi: FE vs RE
+df_pesi <- studi |>
+  rename(wi_FE = wi) |>
+  mutate(
+    wi_RE     = 1 / (sei^2 + tau2),
+    peso_FE   = round(100 * wi_FE / sum(wi_FE), 1),
+    peso_RE   = round(100 * wi_RE / sum(wi_RE), 1)
+  ) |>
+  select(studio, peso_FE, peso_RE)
+
+df_pesi_long <- pivot_longer(df_pesi, -studio,
+                              names_to = "modello", values_to = "peso")
+
+ggplot(df_pesi_long, aes(x = reorder(studio, peso),
+                          y = peso, fill = modello)) +
+  geom_col(position = "dodge", width = 0.6) +
+  scale_fill_manual(values = c("peso_FE" = "#2E86AB", "peso_RE" = "#E63946"),
+                    labels = c("Fixed-Effect", "Random-Effects")) +
+  coord_flip() +
+  labs(title    = "Fixed vs Random: redistribuzione dei pesi",
+       subtitle = "RE distribuisce i pesi più equamente tra studi",
+       x = NULL, y = "Peso (%)", fill = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"), legend.position = "top")
+```
+
+---
+
+# 4️⃣ Quando Usare Quale Modello?
+
+```{r decision-framework}
+decisione <- data.frame(
+  Domanda = c(
+    "Tutti gli studi replicano la stessa procedura?",
+    "Gli studi variano per popolazione, setting, dosaggio?",
+    "Vuoi generalizzare oltre gli studi inclusi?",
+    "I² è > 25% oppure τ² > 0?",
+    "k < 5 studi con τ² incerto?"
+  ),
+  `Se SÌ → usa` = c(
+    "Fixed-Effect",
+    "Random-Effects",
+    "Random-Effects",
+    "Random-Effects",
+    "Entrambi (sensitivity)"
+  ),
+  Note = c(
+    "Es: stesso farmaco, stesso dosaggio, stesso outcome",
+    "Tipico in ricerca clinica applicata",
+    "RE stima l'effetto medio su una distribuzione di contesti",
+    "L'eterogeneità osservata giustifica il RE",
+    "τ² difficile da stimare con k piccolo"
+  )
+)
+knitr::kable(decisione, caption = "Guida alla scelta del modello")
+```
+
+> 🔑 **Borenstein (2021)**: *"In most cases in clinical research, the
+> random-effects model is the appropriate choice because studies inevitably
+> differ in populations, interventions, and outcomes."*
+
+---
+
+# 5️⃣ Prediction Interval — Il Vero Output del RE
+
+Il PI dice: *"Se applicassimo questo trattamento in un nuovo contesto
+clinico, qual è il range atteso dell'effetto?"*
+
+```{r prediction-interval}
+# Simulation: mostra la differenza IC vs PI
+tau2_sim <- 0.08
+theta_sim <- 0.45
+se_sim    <- 0.07
+k_sim     <- 12
+
+IC_lb  <- theta_sim - 1.96 * se_sim
+IC_ub  <- theta_sim + 1.96 * se_sim
+PI_lb  <- theta_sim - 1.96 * sqrt(se_sim^2 + tau2_sim)
+PI_ub  <- theta_sim + 1.96 * sqrt(se_sim^2 + tau2_sim)
+
+df_intervals <- data.frame(
+  tipo = c("IC 95% (summary effect)", "PI 95% (effetto futuro)"),
+  lb   = c(IC_lb, PI_lb),
+  centro = theta_sim,
+  ub   = c(IC_ub, PI_ub)
+)
+
+ggplot(df_intervals, aes(y = tipo, x = centro)) +
+  geom_pointrange(aes(xmin = lb, xmax = ub, color = tipo),
+                  linewidth = 1.5, size = 0.8) +
+  geom_vline(xintercept = 0, lty = 2, color = "gray60") +
+  scale_color_manual(values = c("#2E86AB","#E63946"), guide = "none") +
+  labs(title    = "IC vs Prediction Interval",
+       subtitle = "Il PI è sempre più ampio: riflette la variabilità tra contesti",
+       x = "Effect size", y = NULL) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+---
+
+# 🏁 Fine del Modulo Fondazionale
+
+Hai ora le basi per iniziare a usare `{meta}` e `{metafor}` in R.
+Il prossimo step con **Claude Code** in Positron:
+
+```r
+# Prima vera meta-analisi!
+library(meta)
+library(metafor)
+
+# Leggi i dati del tuo primo dataset
+# e lancia la tua prima meta-analisi guidata da Claude Code
+```
+
+**Buon Journey!** 🚀

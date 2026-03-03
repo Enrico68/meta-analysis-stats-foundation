@@ -1,0 +1,216 @@
+---
+title: "03 · Effect Size — La Valuta della Meta-Analisi"
+subtitle: "Fondamenti per la Meta-Analisi"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    theme: cosmo
+    highlight-style: github
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(ggplot2)
+```
+
+# 🎯 Obiettivo
+
+L'**effect size** è la misura quantitativa dell'entità di un effetto.
+È la *valuta* comune che permette di confrontare studi diversi in una meta-analisi.
+
+---
+
+# 1️⃣ Cohen's d — Variabili Continue
+
+Cohen's d standardizza la differenza tra due medie in unità di deviazione standard.
+
+$$d = \frac{\mu_1 - \mu_2}{\sigma_{pooled}}$$
+
+```{r cohens-d}
+set.seed(42)
+# Scenario: RCT su riduzione pressione arteriosa sistolica
+n_per_gruppo <- 50
+ctrl  <- rnorm(n_per_gruppo, mean = 140, sd = 18)
+tratt <- rnorm(n_per_gruppo, mean = 130, sd = 16)
+
+# Calcolo manuale di Cohen's d
+media_diff <- mean(tratt) - mean(ctrl)
+sd_pooled  <- sqrt(((n_per_gruppo-1)*var(ctrl) +
+                    (n_per_gruppo-1)*var(tratt)) / (2*n_per_gruppo - 2))
+d <- media_diff / sd_pooled
+
+cat("Differenza media:    ", round(media_diff, 2), "mmHg\n")
+cat("SD pooled:           ", round(sd_pooled, 2), "\n")
+cat("Cohen's d:           ", round(d, 3), "\n")
+cat("Interpretazione:     ",
+    ifelse(abs(d) < 0.2, "Trascurabile",
+    ifelse(abs(d) < 0.5, "Piccolo",
+    ifelse(abs(d) < 0.8, "Medio", "Grande"))), "\n")
+```
+
+```{r cohens-d-visuale}
+df_vis <- bind_rows(
+  data.frame(x = ctrl,  gruppo = "Controllo"),
+  data.frame(x = tratt, gruppo = "Trattamento")
+)
+
+ggplot(df_vis, aes(x = x, fill = gruppo)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(aes(xintercept = mean(ctrl)),  color = "#E63946", lty = 2) +
+  geom_vline(aes(xintercept = mean(tratt)), color = "#2A9D8F", lty = 2) +
+  scale_fill_manual(values = c("#E63946", "#2A9D8F")) +
+  annotate("text", x = 120, y = 0.026,
+           label = paste0("d = ", round(d, 2)),
+           size = 5, fontface = "bold") +
+  labs(title = "Cohen's d: sovrapposizione delle distribuzioni",
+       subtitle = "Più piccola la sovrapposizione → d più grande",
+       x = "PAS (mmHg)", y = "Densità", fill = NULL) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"), legend.position = "top")
+```
+
+---
+
+# 2️⃣ Odds Ratio (OR) — Outcome Binari
+
+Usato quando l'outcome è **sì/no**: deceduto/vivo, reingresso/non reingresso.
+
+$$OR = \frac{a/b}{c/d} = \frac{a \times d}{b \times c}$$
+
+```{r odds-ratio}
+# Tabella 2x2: esempio RCT sepsi
+#            Morte  Sopravvissuto
+# Trattamento  12       88
+# Controllo    25       75
+
+a <- 12; b <- 88   # trattamento: eventi, non-eventi
+c <- 25; d <- 75   # controllo:   eventi, non-eventi
+
+OR <- (a * d) / (b * c)
+logOR <- log(OR)
+SE_logOR <- sqrt(1/a + 1/b + 1/c + 1/d)
+IC_OR_lb <- exp(logOR - 1.96 * SE_logOR)
+IC_OR_ub <- exp(logOR + 1.96 * SE_logOR)
+
+cat("=== Analisi tabella 2x2 ===\n")
+cat("Odds Ratio:    ", round(OR, 3), "\n")
+cat("IC 95%:       [", round(IC_OR_lb, 3), ",", round(IC_OR_ub, 3), "]\n")
+cat("log(OR):       ", round(logOR, 3), "\n")
+cat("SE(log OR):    ", round(SE_logOR, 3), "\n")
+cat("\nInterpretazione:", ifelse(OR < 1, "Trattamento protettivo",
+                                "Trattamento associato a rischio maggiore"), "\n")
+```
+
+> 🔑 **Nota tecnica importante**: in meta-analisi lavoriamo con il **log(OR)**
+> perché è simmetrico, ha distribuzione approssimativamente normale, e il
+> suo SE si calcola facilmente. Solo alla fine "back-trasformiamo" con exp().
+
+---
+
+# 3️⃣ Risk Ratio (RR) — Studi di Coorte
+
+Il RR (Relative Risk) è più intuitivo dell'OR, ma non applicabile
+negli studi caso-controllo.
+
+$$RR = \frac{a/(a+b)}{c/(c+d)}$$
+
+```{r risk-ratio}
+# Stesso scenario
+n_tratt <- a + b   # 100
+n_ctrl  <- c + d   # 100
+
+p_tratt <- a / n_tratt
+p_ctrl  <- c / n_ctrl
+
+RR      <- p_tratt / p_ctrl
+logRR   <- log(RR)
+SE_logRR <- sqrt((1-p_tratt)/(a) + (1-p_ctrl)/(c))
+IC_RR_lb <- exp(logRR - 1.96 * SE_logRR)
+IC_RR_ub <- exp(logRR + 1.96 * SE_logRR)
+
+cat("Risk nel trattamento:  ", round(p_tratt, 3), "(", a, "/", n_tratt, ")\n")
+cat("Risk nel controllo:    ", round(p_ctrl, 3),  "(", c, "/", n_ctrl, ")\n")
+cat("Risk Ratio:            ", round(RR, 3), "\n")
+cat("IC 95%:               [", round(IC_RR_lb, 3), ",", round(IC_RR_ub, 3), "]\n")
+```
+
+---
+
+# 4️⃣ Confronto OR vs RR vs RD
+
+```{r confronto-misure}
+# Varia l'incidenza di base mantenendo lo stesso RR
+rr_fisso  <- 0.5   # trattamento dimezza il rischio
+baseline  <- c(0.05, 0.10, 0.20, 0.40, 0.60)
+
+df_comp <- data.frame(
+  p_ctrl  = baseline,
+  p_tratt = baseline * rr_fisso
+) |>
+  mutate(
+    RR = p_tratt / p_ctrl,
+    OR = (p_tratt/(1-p_tratt)) / (p_ctrl/(1-p_ctrl)),
+    RD = p_tratt - p_ctrl
+  )
+
+knitr::kable(df_comp, digits = 3,
+  caption = "OR ≠ RR: la divergenza cresce con l'aumentare dell'incidenza basale")
+```
+
+> ⚠️ **Errore comune**: l'OR e il RR coincidono solo per eventi rari (< 10%).
+> Per eventi frequenti (tipico in emergenza/terapia intensiva) l'OR
+> **sovrastima** il RR. Sempre specificare quale misura si usa!
+
+---
+
+# 5️⃣ Forest Plot Preview — Effect Sizes in Contesto
+
+```{r forest-preview}
+set.seed(99)
+df_forest <- data.frame(
+  studio = paste("Studio", LETTERS[1:8]),
+  d      = c(-0.8, -0.5, -0.3, -0.6, -0.9, -0.4, -0.2, -0.7),
+  se     = c(0.25, 0.18, 0.30, 0.20, 0.15, 0.22, 0.35, 0.19)
+) |>
+  mutate(
+    lb   = d - 1.96 * se,
+    ub   = d + 1.96 * se,
+    peso = round(100 * (1/se^2) / sum(1/se^2), 1)
+  )
+
+# Summary effect (fixed)
+w      <- 1 / df_forest$se^2
+d_sum  <- sum(w * df_forest$d) / sum(w)
+se_sum <- 1 / sqrt(sum(w))
+
+ggplot(df_forest, aes(x = d, y = reorder(studio, d))) +
+  geom_vline(xintercept = 0, lty = 2, color = "gray50") +
+  geom_vline(xintercept = d_sum, lty = 1, color = "#E63946", linewidth = 0.8) +
+  geom_pointrange(aes(xmin = lb, xmax = ub, size = peso),
+                  color = "#2E86AB") +
+  scale_size(range = c(0.3, 1.5), guide = "none") +
+  geom_point(aes(x = d_sum, y = 0), shape = 18, size = 5,
+             color = "#E63946") +
+  annotate("text", x = d_sum, y = 0.3,
+           label = paste0("Summary d = ", round(d_sum, 2)),
+           color = "#E63946", fontface = "bold", size = 4) +
+  labs(title = "Forest Plot (anteprima)",
+       subtitle = "Punti più grandi = studi con peso maggiore",
+       x = "Cohen's d", y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+---
+
+# ➡️ Prossimo Notebook
+
+**`04_eterogeneita.qmd`** — Q di Cochran, I², τ²: misurare la variabilità
+*tra* studi, la vera sfida della meta-analisi.
