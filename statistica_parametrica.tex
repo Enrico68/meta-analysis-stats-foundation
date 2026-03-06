@@ -1,0 +1,785 @@
+% ============================================================
+%  STATISTICA PARAMETRICA — Fondamenti per la Meta-Analisi
+%  Autore: generato con Claude Code · Marzo 2026
+% ============================================================
+\documentclass[12pt, a4paper]{article}
+
+% --- Encoding e lingua ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+
+% --- Tipografia ---
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Layout ---
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=3cm]{geometry}
+\usepackage{parskip}
+
+% --- Matematica ---
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{bm}   % bold math
+
+% --- Colori e grafica ---
+\usepackage[dvipsnames, table]{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+% --- Box e ambienti decorati ---
+\usepackage{tcolorbox}
+\tcbuselibrary{theorems, breakable}
+
+% --- Tabelle ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+
+% --- Intestazioni ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{Statistica Parametrica}}
+\fancyhead[R]{\small\textit{Fondamenti per la Meta-Analisi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Hyperlink ---
+\usepackage[colorlinks=true, linkcolor=MidnightBlue,
+            citecolor=ForestGreen, urlcolor=MidnightBlue]{hyperref}
+
+% --- (tocloft non disponibile, si usa il TOC di default) ---
+
+% ============================================================
+%  AMBIENTI TEOREMI
+% ============================================================
+\definecolor{defblue}{RGB}{0, 82, 165}
+\definecolor{thmgreen}{RGB}{0, 130, 80}
+\definecolor{propyellow}{RGB}{200, 130, 0}
+\definecolor{exgray}{RGB}{80, 80, 80}
+\definecolor{noteviolet}{RGB}{120, 40, 160}
+
+% Stili senza libreria "skins" (non richiede tikzfill)
+\tcbset{
+  mybox/.style 2 args={
+    colback=#1!5!white,
+    colframe=#1!65!black,
+    fonttitle=\bfseries\color{white},
+    colbacktitle=#1!65!black,
+    breakable,
+    title={#2}
+  }
+}
+
+\newcounter{defcnt}
+\newcounter{thmcnt}
+
+\newtcolorbox{definizione}[1][]{
+  mybox={defblue}{Definizione\ \refstepcounter{defcnt}\thedefcnt\quad #1}
+}
+
+\newtcolorbox{teorema}[1][]{
+  mybox={thmgreen}{Teorema\ \refstepcounter{thmcnt}\thethmcnt\quad #1}
+}
+
+\newtcolorbox{proprieta}[1][]{
+  mybox={propyellow}{Proprietà\ #1}
+}
+
+\newtcolorbox{esempio}[1][]{
+  mybox={exgray}{Esempio\ #1}
+}
+
+\newtcolorbox{nota}{
+  mybox={noteviolet}{Nota}
+}
+
+\newtcolorbox{chiave}{
+  mybox={MidnightBlue}{Concetto Chiave}
+}
+
+% ============================================================
+%  OPERATORI MATEMATICI
+% ============================================================
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Prob}{\mathbb{P}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\iid}{\overset{\text{i.i.d.}}{\sim}}
+
+% ============================================================
+%  DOCUMENTO
+% ============================================================
+\begin{document}
+
+% --- FRONTESPIZIO ---
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\Large\bfseries\color{MidnightBlue} Fondamenti Statistici per la Meta-Analisi}\\[0.5cm]
+  \rule{\linewidth}{1.5pt}\\[0.3cm]
+  {\Huge\bfseries Statistica Parametrica}\\[0.3cm]
+  \rule{\linewidth}{1.5pt}\\[2cm]
+
+  \begin{tikzpicture}[xscale=1.8, yscale=12]
+    % Asse x
+    \draw[->] (-2.8,0) -- (2.8,0) node[right] {$x$};
+    \draw[->] (0,0)    -- (0,0.42) node[above] {$f(x)$};
+    % N(0,1) riempita
+    \fill[MidnightBlue!20]
+      plot[domain=-2.8:2.8, samples=120]
+        (\x, {exp(-\x*\x/2)/2.5066}) -- (2.8,0) -- (-2.8,0) -- cycle;
+    \draw[thick, MidnightBlue]
+      plot[domain=-2.8:2.8, samples=120] (\x, {exp(-\x*\x/2)/2.5066});
+    % N(0, 1.5^2) tratteggiata
+    \draw[thick, ForestGreen!70!black, dashed]
+      plot[domain=-2.8:2.8, samples=120] (\x, {exp(-\x*\x/4.5)/(1.5*2.5066)});
+    % Etichette
+    \node[below] at (0,0) {\small$0$};
+  \end{tikzpicture}
+
+  \vspace{1.5cm}
+  {\large Una guida progressiva alle distribuzioni, ai test di ipotesi\\
+  e all'inferenza statistica}\\[2cm]
+
+  \vfill
+  {\large\itshape Progetto: \textbf{Meta-Analysis Stats Foundation}}\\[0.3cm]
+  {\normalsize Marzo 2026}
+\end{titlepage}
+
+% --- INDICE ---
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introduzione alla Statistica Parametrica}
+% ============================================================
+
+La \textbf{statistica parametrica} è la branca della statistica inferenziale
+che assume che i dati provengano da una distribuzione di probabilità la cui
+forma è nota a priori — tipicamente la distribuzione normale — e che le
+ipotesi si riferiscano ai \emph{parametri} di tale distribuzione
+(media $\mu$, varianza $\sigma^2$, ecc.).
+
+\begin{chiave}
+  L'aggettivo \emph{parametrico} indica che il modello statistico è
+  completamente specificato da un insieme finito di parametri.
+  Al contrario, la statistica \emph{non parametrica} non assume alcuna
+  forma distributiva specifica.
+\end{chiave}
+
+\subsection{Perché la statistica parametrica è fondamentale per la meta-analisi}
+
+Nella meta-analisi si sintetizzano stime di \emph{effect size} provenienti da
+studi diversi. Ogni stima è accompagnata da:
+\begin{itemize}
+  \item un \textbf{errore standard} (SE) — derivato dall'inferenza campionaria;
+  \item un \textbf{intervallo di confidenza} (IC) — costruito su ipotesi distributive;
+  \item un \textbf{valore-$p$} — ottenuto da un test di ipotesi parametrico.
+\end{itemize}
+
+Comprendere le distribuzioni e i test parametrici è quindi il presupposto
+per interpretare correttamente qualsiasi modello di meta-analisi.
+
+% ============================================================
+\section{Concetti Fondamentali di Probabilità}
+% ============================================================
+
+\subsection{Variabili Aleatorie}
+
+\begin{definizione}[Variabile aleatoria]
+  Una \textbf{variabile aleatoria} $X$ è una funzione
+  $X : \Omega \to \R$ che associa a ogni esito di un esperimento casuale
+  un numero reale. Può essere:
+  \begin{itemize}
+    \item \emph{discreta}: assume un insieme numerabile di valori;
+    \item \emph{continua}: assume valori in un intervallo (o unione di
+      intervalli) di $\R$.
+  \end{itemize}
+\end{definizione}
+
+\subsection{Valore Atteso e Varianza}
+
+\begin{definizione}[Valore atteso]
+  Per una variabile aleatoria continua con densità $f(x)$:
+  \[
+    \E[X] = \int_{-\infty}^{+\infty} x\, f(x)\, \mathrm{d}x
+  \]
+  Il valore atteso rappresenta il \emph{baricentro} della distribuzione.
+\end{definizione}
+
+\begin{definizione}[Varianza]
+  \[
+    \Var(X) = \E\!\left[(X - \E[X])^2\right]
+             = \E[X^2] - \bigl(\E[X]\bigr)^2
+  \]
+  La \textbf{deviazione standard} è $\sigma = \sqrt{\Var(X)}$ ed è espressa
+  nelle stesse unità di misura di $X$.
+\end{definizione}
+
+\begin{proprieta}[Linearità del valore atteso]
+  Per costanti $a, b \in \R$ e variabili aleatorie $X, Y$:
+  \[
+    \E[aX + bY] = a\,\E[X] + b\,\E[Y]
+  \]
+  Nota: questa proprietà vale \emph{sempre}, indipendentemente
+  dall'indipendenza tra $X$ e $Y$.
+\end{proprieta}
+
+% ============================================================
+\section{Le Distribuzioni Parametriche Fondamentali}
+% ============================================================
+
+\subsection{La Distribuzione Normale (Gaussiana)}
+
+La distribuzione normale è il pilastro della statistica parametrica.
+Il suo ruolo centrale è giustificato dal Teorema del Limite Centrale
+(sezione~\ref{sec:tlc}).
+
+\begin{definizione}[Distribuzione Normale]
+  $X \sim \N(\mu, \sigma^2)$ se la sua funzione di densità è:
+  \[
+    \boxed{f(x; \mu, \sigma^2) =
+      \frac{1}{\sigma\sqrt{2\pi}}
+      \exp\!\left(-\frac{(x-\mu)^2}{2\sigma^2}\right),
+      \quad x \in \R}
+  \]
+  dove $\mu = \E[X]$ è la \textbf{media} e $\sigma^2 = \Var(X)$ è la
+  \textbf{varianza}.
+\end{definizione}
+
+\subsubsection{Distribuzione Normale Standard}
+
+La \textbf{normale standard} $Z \sim \N(0,1)$ si ottiene mediante la
+trasformazione:
+\[
+  Z = \frac{X - \mu}{\sigma}
+\]
+La sua funzione di densità è:
+\[
+  \phi(z) = \frac{1}{\sqrt{2\pi}} e^{-z^2/2}
+\]
+e la funzione di ripartizione $\Phi(z) = \Prob(Z \le z)$ è tabulata
+o calcolabile via software.
+
+\begin{table}[h!]
+  \centering
+  \caption{Probabilità racchiuse nella normale standard}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Intervallo} & \textbf{Formula} & \textbf{Probabilità} \\
+    \midrule
+    $1\sigma$ & $\Prob(-1 \le Z \le 1)$ & $\approx 68.27\%$ \\
+    $2\sigma$ & $\Prob(-2 \le Z \le 2)$ & $\approx 95.45\%$ \\
+    $3\sigma$ & $\Prob(-3 \le Z \le 3)$ & $\approx 99.73\%$ \\
+    $1.96\sigma$ & $\Prob(-1.96 \le Z \le 1.96)$ & $= 95.00\%$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{nota}
+  Il valore $z_{0.025} = 1.96$ appare costantemente nella costruzione degli
+  intervalli di confidenza al 95\% e nei test bilaterali con $\alpha = 0.05$.
+\end{nota}
+
+\subsection{Il Teorema del Limite Centrale}
+\label{sec:tlc}
+
+\begin{teorema}[Teorema del Limite Centrale (TLC)]
+  Siano $X_1, X_2, \ldots, X_n \iid$ con $\E[X_i] = \mu$ e
+  $\Var(X_i) = \sigma^2 < \infty$. Allora, per $n \to \infty$:
+  \[
+    \sqrt{n}\,\frac{\bar{X}_n - \mu}{\sigma}
+    \;\xrightarrow{\;\mathcal{D}\;}\; \N(0,1)
+  \]
+  In pratica, per $n \ge 30$ l'approssimazione è già molto buona.
+\end{teorema}
+
+\begin{chiave}
+  Il TLC è il fondamento dell'inferenza classica: giustifica l'uso di
+  test e intervalli di confidenza basati sulla normale \emph{anche} quando
+  la distribuzione originale dei dati non è normale.
+\end{chiave}
+
+\subsection{La Distribuzione $t$ di Student}
+
+Quando la varianza $\sigma^2$ è \emph{ignota} e il campione è piccolo,
+si usa la distribuzione $t$ di Student.
+
+\begin{definizione}[Distribuzione $t$ di Student]
+  Se $Z \sim \N(0,1)$ e $V \sim \chi^2_\nu$ sono indipendenti, allora:
+  \[
+    T = \frac{Z}{\sqrt{V/\nu}} \sim t_\nu
+  \]
+  La sua densità è:
+  \[
+    f(t; \nu) =
+      \frac{\Gamma\!\left(\tfrac{\nu+1}{2}\right)}
+           {\sqrt{\nu\pi}\;\Gamma\!\left(\tfrac{\nu}{2}\right)}
+      \left(1 + \frac{t^2}{\nu}\right)^{-(\nu+1)/2}
+  \]
+  dove $\nu$ sono i \textbf{gradi di libertà}.
+\end{definizione}
+
+\begin{proprieta}[Convergenza alla normale]
+  Per $\nu \to \infty$, la $t_\nu$ converge alla $\N(0,1)$.
+  In pratica, per $\nu \ge 30$ le due distribuzioni sono quasi
+  indistinguibili.
+\end{proprieta}
+
+In un campione $X_1, \ldots, X_n \iid \N(\mu, \sigma^2)$, la statistica:
+\[
+  T = \frac{\bar{X} - \mu}{S/\sqrt{n}} \sim t_{n-1}
+\]
+dove $S^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$ è la
+\emph{varianza campionaria}.
+
+\subsection{La Distribuzione Chi-quadrato}
+
+\begin{definizione}[Distribuzione $\chi^2$]
+  Se $Z_1, \ldots, Z_\nu \iid \N(0,1)$, allora:
+  \[
+    V = \sum_{i=1}^{\nu} Z_i^2 \sim \chi^2_\nu
+  \]
+  con $\E[V] = \nu$ e $\Var(V) = 2\nu$.
+\end{definizione}
+
+La $\chi^2$ è usata per:
+\begin{itemize}
+  \item inferenza sulla varianza di una popolazione normale;
+  \item test di adattamento (\emph{goodness-of-fit});
+  \item test di indipendenza in tabelle di contingenza;
+  \item la statistica $Q$ di Cochran per l'eterogeneità in meta-analisi.
+\end{itemize}
+
+\subsection{La Distribuzione $F$ di Fisher-Snedecor}
+
+\begin{definizione}[Distribuzione $F$]
+  Se $U \sim \chi^2_{\nu_1}$ e $V \sim \chi^2_{\nu_2}$ sono
+  indipendenti, allora:
+  \[
+    F = \frac{U/\nu_1}{V/\nu_2} \sim F_{\nu_1, \nu_2}
+  \]
+\end{definizione}
+
+La distribuzione $F$ è fondamentale nell'analisi della varianza (ANOVA)
+e nel confronto tra varianze di due popolazioni.
+
+% ============================================================
+\section{Stima dei Parametri}
+% ============================================================
+
+\subsection{Stimatori e Proprietà Desiderabili}
+
+\begin{definizione}[Stimatore]
+  Uno \textbf{stimatore} $\hat{\theta}$ è una funzione del campione
+  $\hat{\theta} = g(X_1, \ldots, X_n)$ usata per stimare
+  il parametro ignoto $\theta$.
+\end{definizione}
+
+Le proprietà più importanti di uno stimatore sono:
+
+\begin{table}[h!]
+  \centering
+  \caption{Proprietà desiderabili di uno stimatore}
+  \begin{tabular}{>{\bfseries}p{3.5cm} p{9cm}}
+    \toprule
+    Proprietà & Descrizione \\
+    \midrule
+    Non distorsione & $\E[\hat\theta] = \theta$ (nessun errore sistematico) \\[4pt]
+    Consistenza     & $\hat\theta \xrightarrow{p} \theta$ al crescere di $n$ \\[4pt]
+    Efficienza      & $\Var(\hat\theta)$ è minima tra tutti gli stimatori non distorti \\[4pt]
+    Sufficienza     & $\hat\theta$ contiene tutta l'informazione del campione su $\theta$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Metodo della Massima Verosimiglianza (MLE)}
+
+\begin{definizione}[Funzione di verosimiglianza]
+  Data una realizzazione $(x_1, \ldots, x_n)$, la funzione di
+  \textbf{verosimiglianza} è:
+  \[
+    L(\theta) = \prod_{i=1}^{n} f(x_i; \theta)
+  \]
+  La \textbf{log-verosimiglianza} è $\ell(\theta) = \log L(\theta)$.
+\end{definizione}
+
+Lo \textbf{stimatore di massima verosimiglianza} (MLE) è:
+\[
+  \hat\theta_{\text{MLE}} = \arg\max_\theta\; \ell(\theta)
+\]
+
+\begin{esempio}[MLE per la normale]
+  Dati $X_1, \ldots, X_n \iid \N(\mu, \sigma^2)$, gli MLE sono:
+  \[
+    \hat\mu_{\text{MLE}} = \bar{X} = \frac{1}{n}\sum_{i=1}^n X_i
+    \qquad
+    \hat\sigma^2_{\text{MLE}} = \frac{1}{n}\sum_{i=1}^n (X_i - \bar{X})^2
+  \]
+  Nota: $\hat\sigma^2_{\text{MLE}}$ è \emph{distorto}; lo stimatore non
+  distorto è $S^2 = \frac{1}{n-1}\sum (X_i-\bar{X})^2$.
+\end{esempio}
+
+\subsection{Errore Standard e Intervallo di Confidenza}
+
+\begin{definizione}[Errore standard]
+  L'\textbf{errore standard} (SE) di uno stimatore è la sua deviazione
+  standard:
+  \[
+    \text{SE}(\hat\theta) = \sqrt{\Var(\hat\theta)}
+  \]
+  Per la media campionaria: $\text{SE}(\bar{X}) = \sigma/\sqrt{n}$.
+\end{definizione}
+
+\begin{definizione}[Intervallo di Confidenza]
+  Un \textbf{intervallo di confidenza} (IC) al livello $(1-\alpha)$ per
+  $\theta$ è un intervallo aleatorio $[\hat\theta_L, \hat\theta_U]$ tale che:
+  \[
+    \Prob(\hat\theta_L \le \theta \le \hat\theta_U) = 1 - \alpha
+  \]
+\end{definizione}
+
+\subsubsection{IC per la media con varianza nota}
+
+\[
+  \text{IC}_{1-\alpha}(\mu) =
+  \left[\bar{X} - z_{\alpha/2}\frac{\sigma}{\sqrt{n}},\;
+        \bar{X} + z_{\alpha/2}\frac{\sigma}{\sqrt{n}}\right]
+\]
+
+\subsubsection{IC per la media con varianza ignota}
+
+\[
+  \text{IC}_{1-\alpha}(\mu) =
+  \left[\bar{X} - t_{n-1,\,\alpha/2}\frac{S}{\sqrt{n}},\;
+        \bar{X} + t_{n-1,\,\alpha/2}\frac{S}{\sqrt{n}}\right]
+\]
+
+\begin{nota}
+  Il livello più usato è $1-\alpha = 0.95$. In questo caso $z_{0.025} = 1.96$
+  e $t_{n-1, 0.025}$ dipende dai gradi di libertà (per $n$ grande $\approx 1.96$).
+\end{nota}
+
+% ============================================================
+\section{Test di Ipotesi}
+% ============================================================
+
+\subsection{Il Framework Neyman-Pearson}
+
+Un test di ipotesi valuta l'evidenza contro un'ipotesi nulla $H_0$
+a favore di un'alternativa $H_1$.
+
+\begin{table}[h!]
+  \centering
+  \caption{Tipi di errore nei test di ipotesi}
+  \rowcolors{2}{gray!10}{white}
+  \begin{tabular}{lccc}
+    \toprule
+    & & \multicolumn{2}{c}{\textbf{Realtà}} \\
+    \cmidrule(lr){3-4}
+    & & $H_0$ vera & $H_0$ falsa \\
+    \midrule
+    \multirow{2}{*}{\textbf{Decisione}} &
+      Non rifiuto $H_0$ & Decisione corretta & Errore tipo II ($\beta$) \\
+    & Rifiuto $H_0$    & Errore tipo I ($\alpha$) & Decisione corretta \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{definizione}[Valore-$p$]
+  Il \textbf{valore-$p$} è la probabilità di osservare una statistica test
+  uguale o più estrema di quella osservata, supponendo $H_0$ vera:
+  \[
+    p\text{-value} = \Prob_{H_0}(T \ge t_{\text{obs}})
+  \]
+  Si rifiuta $H_0$ quando $p \le \alpha$.
+\end{definizione}
+
+\begin{nota}
+  Il valore-$p$ \emph{non} è la probabilità che $H_0$ sia vera.
+  È la probabilità di osservare dati altrettanto o più estremi
+  \emph{se} $H_0$ fosse vera.
+\end{nota}
+
+\subsection{Il Test $t$ di Student}
+
+\subsubsection{Test a un campione}
+
+\textbf{Ipotesi:} $H_0: \mu = \mu_0$ vs $H_1: \mu \neq \mu_0$ \\[4pt]
+\textbf{Statistica test:}
+\[
+  t = \frac{\bar{X} - \mu_0}{S/\sqrt{n}} \;\sim\; t_{n-1}
+  \quad \text{sotto } H_0
+\]
+\textbf{Regione critica bilaterale:}
+$|t| > t_{n-1,\, \alpha/2}$
+
+\subsubsection{Test a due campioni indipendenti}
+
+Dati $X_1, \ldots, X_{n_1} \iid \N(\mu_1, \sigma^2)$ e
+$Y_1, \ldots, Y_{n_2} \iid \N(\mu_2, \sigma^2)$ (varianza comune):
+
+\[
+  t = \frac{\bar{X} - \bar{Y}}{S_p\sqrt{\dfrac{1}{n_1} + \dfrac{1}{n_2}}}
+  \;\sim\; t_{n_1+n_2-2}
+\]
+
+dove la \textbf{varianza pooled} è:
+\[
+  S_p^2 = \frac{(n_1-1)S_1^2 + (n_2-1)S_2^2}{n_1+n_2-2}
+\]
+
+\begin{esempio}[Contesto meta-analitico]
+  In molti studi primari inclusi in una meta-analisi, l'effect size di Cohen $d$
+  è calcolato a partire dalla statistica $t$ del confronto tra due gruppi:
+  \[
+    d = \frac{\bar{X}_E - \bar{X}_C}{S_p}
+      = t \cdot \sqrt{\frac{1}{n_E} + \frac{1}{n_C}}
+  \]
+\end{esempio}
+
+\subsection{Test $\chi^2$ di Pearson}
+
+Il test $\chi^2$ verifica se le frequenze osservate si discostano
+significativamente da quelle attese.
+
+\textbf{Statistica test:}
+\[
+  \chi^2 = \sum_{i} \frac{(O_i - E_i)^2}{E_i} \;\sim\; \chi^2_{k-1}
+  \quad \text{sotto } H_0
+\]
+dove $O_i$ sono le frequenze osservate ed $E_i$ quelle attese.
+
+\subsection{Potenza di un Test}
+
+\begin{definizione}[Potenza]
+  La \textbf{potenza} di un test è la probabilità di rifiutare correttamente
+  $H_0$ quando $H_1$ è vera:
+  \[
+    \text{Potenza} = 1 - \beta = \Prob(\text{rifiuto } H_0 \mid H_1 \text{ vera})
+  \]
+\end{definizione}
+
+La potenza dipende da:
+\begin{itemize}
+  \item \textbf{Dimensione del campione} $n$ (maggiore $\Rightarrow$ maggiore potenza)
+  \item \textbf{Livello di significatività} $\alpha$
+  \item \textbf{Ampiezza dell'effetto} (distanza $\mu_1 - \mu_0$)
+  \item \textbf{Variabilità} $\sigma$
+\end{itemize}
+
+% ============================================================
+\section{Analisi della Varianza (ANOVA)}
+% ============================================================
+
+\subsection{ANOVA a una via}
+
+L'ANOVA confronta le medie di $k \ge 2$ gruppi. Modello:
+\[
+  X_{ij} = \mu + \alpha_i + \varepsilon_{ij},
+  \quad \varepsilon_{ij} \iid \N(0, \sigma^2)
+\]
+con $i = 1, \ldots, k$ (gruppi), $j = 1, \ldots, n_i$ (osservazioni).
+
+\textbf{Decomposizione della varianza totale:}
+\[
+  \underbrace{\sum_{i}\sum_{j}(X_{ij} - \bar{X})^2}_{\text{SS}_\text{tot}}
+  =
+  \underbrace{\sum_{i} n_i(\bar{X}_{i\cdot} - \bar{X})^2}_{\text{SS}_\text{tra}}
+  +
+  \underbrace{\sum_{i}\sum_{j}(X_{ij} - \bar{X}_{i\cdot})^2}_{\text{SS}_\text{entro}}
+\]
+
+\begin{table}[h!]
+  \centering
+  \caption{Tavola ANOVA}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Fonte} & \textbf{SS} & \textbf{gl} & \textbf{MS} & \textbf{$F$} \\
+    \midrule
+    Tra gruppi & $\text{SS}_\text{tra}$ & $k-1$ & $\text{SS}_\text{tra}/(k-1)$ &
+      $\text{MS}_\text{tra}/\text{MS}_\text{entro}$ \\
+    Entro gruppi & $\text{SS}_\text{entro}$ & $N-k$ & $\text{SS}_\text{entro}/(N-k)$ & \\
+    Totale & $\text{SS}_\text{tot}$ & $N-1$ & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Sotto $H_0: \alpha_1 = \cdots = \alpha_k = 0$, la statistica $F$ segue
+una $F_{k-1,\,N-k}$.
+
+% ============================================================
+\section{Regressione Lineare}
+% ============================================================
+
+\subsection{Modello di Regressione Lineare Semplice}
+
+\[
+  Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i,
+  \quad \varepsilon_i \iid \N(0, \sigma^2)
+\]
+
+\textbf{Stime ai minimi quadrati ordinari (OLS):}
+\[
+  \hat\beta_1 = \frac{\sum_i (X_i - \bar X)(Y_i - \bar Y)}
+                     {\sum_i (X_i - \bar X)^2}
+  = \frac{\text{Cov}(X,Y)}{\Var(X)}
+  \qquad
+  \hat\beta_0 = \bar Y - \hat\beta_1 \bar X
+\]
+
+\subsection{Coefficiente di Determinazione $R^2$}
+
+\[
+  R^2 = \frac{\text{SS}_\text{regressione}}{\text{SS}_\text{totale}}
+      = 1 - \frac{\text{SS}_\text{residui}}{\text{SS}_\text{totale}}
+  \in [0,1]
+\]
+
+$R^2$ indica la proporzione di varianza in $Y$ spiegata da $X$.
+
+\begin{nota}
+  Nel contesto della meta-analisi, la regressione lineare (meta-regressione)
+  permette di studiare se caratteristiche degli studi (moderatori)
+  spiegano l'eterogeneità degli effect size.
+\end{nota}
+
+% ============================================================
+\section{Assunzioni della Statistica Parametrica e loro Verifica}
+% ============================================================
+
+\begin{table}[h!]
+  \centering
+  \caption{Assunzioni principali e test diagnostici}
+  \begin{tabular}{>{\bfseries}p{3.5cm} p{5cm} p{4cm}}
+    \toprule
+    Assunzione & Descrizione & Test/Diagnostica \\
+    \midrule
+    Normalità &
+      I residui (o i dati) seguono una $\N$ &
+      Shapiro-Wilk, Q-Q plot \\[6pt]
+    Omoschedasticità &
+      Varianza costante dei residui &
+      Levene, Bartlett, residui vs fitted \\[6pt]
+    Indipendenza &
+      Le osservazioni sono indipendenti &
+      Design del disegno di ricerca \\[6pt]
+    Assenza di outlier &
+      Nessun punto anomalo influente &
+      Box-plot, Cook's distance \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{chiave}
+  Quando le assunzioni sono violate:
+  \begin{itemize}
+    \item \textbf{non normalità} → trasformazioni (log, radice) o test non parametrici;
+    \item \textbf{eteroschedasticità} → varianza robusta (Huber-White);
+    \item \textbf{dipendenza} → modelli misti, GEE, meta-analisi con dati correlati.
+  \end{itemize}
+\end{chiave}
+
+% ============================================================
+\section{Riepilogo e Connessioni con la Meta-Analisi}
+% ============================================================
+
+\begin{table}[h!]
+  \centering
+  \caption{Concetti parametrici e loro ruolo nella meta-analisi}
+  \rowcolors{2}{MidnightBlue!5}{white}
+  \begin{tabular}{p{4.5cm} p{7.5cm}}
+    \toprule
+    \textbf{Concetto Parametrico} & \textbf{Ruolo nella Meta-Analisi} \\
+    \midrule
+    Distribuzione normale      & Distribuzione asintotica degli effect size \\
+    Errore standard            & Pesi nella media ponderata ($w_i = 1/\text{SE}_i^2$) \\
+    Intervallo di confidenza   & IC dell'effect size combinato \\
+    Test $z$/$t$               & Significatività del pooled effect \\
+    $\chi^2$ di Cochran ($Q$)  & Test di eterogeneità tra studi \\
+    Distribuzione $t$          & IC con campioni piccoli o varianza ignota \\
+    Regressione lineare        & Meta-regressione sui moderatori \\
+    ANOVA                      & Analisi dei sottogruppi \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ============================================================
+%  APPENDICE
+% ============================================================
+\appendix
+
+\section{Formulario Rapido}
+
+\subsection*{Distribuzioni}
+\begin{align*}
+  X \sim \N(\mu, \sigma^2) &\implies
+    \bar{X} \sim \N\!\left(\mu, \frac{\sigma^2}{n}\right) \\[4pt]
+  Z = \frac{X-\mu}{\sigma} &\sim \N(0,1) \\[4pt]
+  T = \frac{\bar{X}-\mu}{S/\sqrt{n}} &\sim t_{n-1} \\[4pt]
+  \frac{(n-1)S^2}{\sigma^2} &\sim \chi^2_{n-1}
+\end{align*}
+
+\subsection*{Valori critici comuni}
+\begin{center}
+\begin{tabular}{ccc}
+  \toprule
+  Livello $\alpha$ & $z_{\alpha/2}$ & $t_{30,\,\alpha/2}$ \\
+  \midrule
+  $0.10$ & $1.645$ & $1.697$ \\
+  $0.05$ & $1.960$ & $2.042$ \\
+  $0.01$ & $2.576$ & $2.750$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Errore standard di stime comuni}
+\begin{align*}
+  \text{SE}(\bar{X}) &= \frac{S}{\sqrt{n}} \\[4pt]
+  \text{SE}(\hat{p}) &= \sqrt{\frac{\hat{p}(1-\hat{p})}{n}} \\[4pt]
+  \text{SE}(\hat\beta_1) &= \frac{S}{\sqrt{\sum(X_i - \bar{X})^2}}
+\end{align*}
+
+% ============================================================
+%  RIFERIMENTI
+% ============================================================
+\section*{Riferimenti Bibliografici}
+\addcontentsline{toc}{section}{Riferimenti Bibliografici}
+
+\begin{thebibliography}{9}
+
+\bibitem{borenstein2021}
+  Borenstein, M., Hedges, L.~V., Higgins, J.~P.~T., \& Rothstein, H.~R.\ (2021).
+  \textit{Introduction to Meta-Analysis} (2nd ed.).
+  Wiley.
+
+\bibitem{harrer2022}
+  Harrer, M., Cuijpers, P., Furukawa, T.~A., \& Ebert, D.~D.\ (2022).
+  \textit{Doing Meta-Analysis with R: A Hands-On Guide}.
+  CRC Press.
+
+\bibitem{casella2002}
+  Casella, G., \& Berger, R.~L.\ (2002).
+  \textit{Statistical Inference} (2nd ed.).
+  Duxbury.
+
+\bibitem{wasserman2004}
+  Wasserman, L.\ (2004).
+  \textit{All of Statistics: A Concise Course in Statistical Inference}.
+  Springer.
+
+\bibitem{montgomery2017}
+  Montgomery, D.~C., Peck, E.~A., \& Vining, G.~G.\ (2012).
+  \textit{Introduction to Linear Regression Analysis} (5th ed.).
+  Wiley.
+
+\end{thebibliography}
+
+\end{document}

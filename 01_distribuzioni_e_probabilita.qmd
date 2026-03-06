@@ -17,7 +17,15 @@ execute:
 ```{r setup}
 #| label: setup
 #| include: false
+# Caricamento del pacchetto tidyverse: collezione di pacchetti per data science
+# Include dplyr (manipolazione dati), tidyr (tidy data), ggplot2 (visualizzazione),
+# purrr (programmazione funzionale), tibble (dataframe moderni), stringr (stringhe),
+# forcats (fattori), readr (lettura dati), e altri
 library(tidyverse)
+
+# Caricamento del pacchetto ggplot2 per la creazione di grafici
+# ggplot2 implementa la "grammar of graphics" per costruire visualizzazioni
+# stratificate e personalizzabili
 library(ggplot2)
 ```
 
@@ -25,7 +33,7 @@ library(ggplot2)
 
 Prima di capire la meta-analisi, dobbiamo parlare la stessa lingua della statistica.
 Questo notebook copre le distribuzioni di probabilità e i concetti che tornano
-**continuamente** nei metodi di sintesi della letteratura.
+**continuamente** nei metodi di sintesi della letteratura. 
 
 ---
 
@@ -36,20 +44,23 @@ o in un campione. In meta-analisi, ogni studio produce un *effect size* (misura
 dell'effetto): la distribuzione ci dice quanto variabile è quella stima.
 
 ```{r distribuzione-discreta}
-# Esempio: distribuzione discreta (lancio di un dado)
-valori <- 1:6
-probabilita <- rep(1/6, 6)
+# Creazione dei valori e probabilità
+valori <- 1:6  # Valori da 1 a 6
+probabilita <- rep(1/6, 6)  # Ripete 1/6 per 6 volte
 
+# Dataframe con valori e probabilità
 df_dado <- data.frame(x = valori, p = probabilita)
 
-ggplot(df_dado, aes(x = factor(x), y = p)) +
-  geom_col(fill = "#2E86AB", color = "white", width = 0.6) +
+# Grafico con ggplot2
+ggplot(df_dado, aes(x = factor(x), y = p)) +  # x come fattore, y come probabilità
+  geom_col(fill = "#2E86AB", color = "white", width = 0.6) +  # Barre colorate
   labs(
     title = "Distribuzione Uniforme Discreta (dado a 6 facce)",
     x = "Valore", y = "Probabilità"
   ) +
-  theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(face = "bold"))
+  theme_minimal(base_size = 13) +  # Tema pulito
+  theme(plot.title = element_text(face = "bold")) +  # Titolo in grassetto
+  labs(caption = "Le 6 barre hanno tutte la stessa altezza (1/6 ≈ 0.167) perché un dado equo assegna probabilità identica a ogni faccia: nessun valore è più probabile degli altri.")
 ```
 
 ---
@@ -170,22 +181,36 @@ Usata per testare l'**eterogeneità** tra studi: la statistica **Q** di Cochran
 segue una distribuzione χ² con (k-1) gradi di libertà, dove k = numero di studi.
 
 ```{r chi-quadro}
+# Creazione di una sequenza di valori da 0 a 30 per l'asse x
+# length.out = 300 crea 300 punti equidistanti per una curva fluida
 x <- seq(0, 30, length.out = 300)
 
+# Creazione di un dataframe combinato con tre distribuzioni Chi-Quadro
+# Ogni distribuzione ha diversi gradi di libertà (df):
+# - df = 2: corrisponde a 3 studi (k-1, dove k = numero di studi)
+# - df = 5: corrisponde a 6 studi
+# - df = 10: corrisponde a 11 studi
+# dchisq() calcola la densità di probabilità della distribuzione Chi-Quadro
 df_chi <- bind_rows(
   data.frame(x = x, y = dchisq(x, df = 2),  df = "df = 2 (3 studi)"),
   data.frame(x = x, y = dchisq(x, df = 5),  df = "df = 5 (6 studi)"),
   data.frame(x = x, y = dchisq(x, df = 10), df = "df = 10 (11 studi)")
 )
 
+# Creazione del grafico con ggplot2
 ggplot(df_chi, aes(x = x, y = y, color = df)) +
+  # Linee delle distribuzioni con spessore 1.2
   geom_line(linewidth = 1.2) +
+  # Assegnazione manuale dei colori a ciascuna curva
   scale_color_manual(values = c("#E63946","#2A9D8F","#F4A261")) +
+  # Titolo ed etichette degli assi
   labs(
     title = "Distribuzione χ² — alla base del test Q di Cochran",
     x = "Valore χ²", y = "Densità", color = NULL
   ) +
+  # Tema minimal con dimensione base del testo 13
   theme_minimal(base_size = 13) +
+  # Personalizzazione aggiuntiva: titolo in grassetto e legenda in alto
   theme(plot.title = element_text(face = "bold"),
         legend.position = "top")
 ```
