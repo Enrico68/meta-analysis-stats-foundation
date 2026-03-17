@@ -45,7 +45,7 @@ dell'effetto): la distribuzione ci dice quanto variabile è quella stima.
 
 ```{r distribuzione-discreta}
 # Creazione dei valori e probabilità
-valori <- 1:6  # Valori da 1 a 6
+valori <- 1:6  # Valori da 1 a 6 descrivi che cosa fa 
 probabilita <- rep(1/6, 6)  # Ripete 1/6 per 6 volte
 
 # Dataframe con valori e probabilità
