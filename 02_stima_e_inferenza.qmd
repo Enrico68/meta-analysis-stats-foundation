@@ -53,6 +53,88 @@ risultati <- map_dfr(names(studi), function(nome) {
 knitr::kable(risultati, caption = "Statistiche descrittive per studio")
 ```
 
+## Esempio pratico passo-passo
+
+Immagina 5 studi che misurano la **riduzione della pressione sistolica** (mmHg)
+con un farmaco antipertensivo:
+
+```{r esempio-passo-passo}
+# I 5 risultati osservati
+riduzioni <- c(8, 12, 6, 15, 9)
+
+# --- MEDIA ---
+n     <- length(riduzioni)
+media <- sum(riduzioni) / n
+
+cat("Valori:", riduzioni, "\n")
+cat("Somma: ", sum(riduzioni), "\n")
+cat("n:     ", n, "\n")
+cat("Media =", sum(riduzioni), "/", n, "=", media, "mmHg\n\n")
+
+# --- VARIANZA (passo per passo) ---
+deviazioni   <- riduzioni - media
+dev_quadrate <- deviazioni^2
+
+df_passi <- data.frame(
+  Studio        = paste("Studio", 1:5),
+  Valore        = riduzioni,
+  Deviazione    = deviazioni,
+  Dev_quadrata  = dev_quadrate
+)
+knitr::kable(df_passi, caption = "Calcolo manuale della varianza")
+```
+
+```{r varianza-risultato}
+varianza <- sum(dev_quadrate) / (n - 1)
+sd_val   <- sqrt(varianza)
+
+cat("Somma delle deviazioni quadrate:", sum(dev_quadrate), "\n")
+cat("Diviso (n-1) =", n-1, "\n")
+cat("Varianza =", varianza, "\n")
+cat("Deviazione standard = sqrt(", varianza, ") =", round(sd_val, 2), "mmHg\n")
+
+# Verifica con funzioni R
+cat("\nVerifica con R: var() =", var(riduzioni), "| sd() =", round(sd(riduzioni), 2), "\n")
+```
+
+> **Perché dividiamo per *n-1* e non *n*?**
+> Con *n* sottostimeremmo la varianza vera della popolazione (bias sistematico).
+> Dividere per *n-1* (**correzione di Bessel**) produce uno stimatore non distorto —
+> fondamentale quando combiniamo campioni piccoli come in meta-analisi.
+
+```{r visualizza-deviazioni}
+df_plot <- data.frame(studio = 1:5, valore = riduzioni)
+
+ggplot(df_plot, aes(x = factor(studio), y = valore)) +
+  geom_col(fill = "#2E86AB", alpha = 0.8, width = 0.6) +
+  geom_hline(yintercept = media, linetype = "dashed",
+             color = "#E63946", linewidth = 1.2) +
+  geom_segment(aes(xend = factor(studio), yend = media),
+               color = "#E63946", linewidth = 0.8, linetype = "dotted") +
+  annotate("text", x = 5.4, y = media + 0.4,
+           label = paste0("Media = ", media, " mmHg"),
+           color = "#E63946", fontface = "bold", size = 4) +
+  labs(
+    title    = "Riduzione pressione nei 5 studi",
+    subtitle = "Le linee rosse mostrano la deviazione di ogni studio dalla media",
+    x = "Studio", y = "Riduzione pressione (mmHg)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+## Connessione con la meta-analisi
+
+```{r connessione-meta}
+# La varianza degli studi → eterogeneità (τ²) in meta-analisi
+confronto <- data.frame(
+  Concetto      = c("Media", "Varianza (σ²)", "SD / √n"),
+  `Singolo studio`   = c("effetto osservato", "dispersione dei soggetti", "errore standard (SE)"),
+  `Meta-analisi`     = c("effetto combinato (pooled)", "eterogeneità tra studi (τ²)", "peso dello studio: 1/SE²")
+)
+knitr::kable(confronto, caption = "Da singolo studio a meta-analisi")
+```
+
 ---
 
 # 2️⃣ L'Errore Standard (SE) — Il Cuore della Meta-Analisi
