@@ -234,9 +234,26 @@ plot_sroc <- function(gfap, s100b, filename) {
     sz <- sqrt(res$r$data$N / max_N) * 4
     points(1 - res$r$data$Sp, res$r$data$Se,
            pch = 21, bg = res$colL, col = res$col, cex = sz, lwd = 1.5)
-    points(1 - res$r$Sp$est, res$r$Se$est,
-           pch = res$pch, bg = res$col, col = "white", cex = 2, lwd = 2)
+    
+    # Pooled estimate con errori
+    pooled_fpr <- 1 - res$r$Sp$est
+    pooled_se  <- res$r$Se$est
+    pooled_fpr_lo <- 1 - res$r$Sp$hi  # NB: Sp hi -> FPR lo
+    pooled_fpr_hi <- 1 - res$r$Sp$lo  # NB: Sp lo -> FPR hi
+    pooled_se_lo  <- res$r$Se$lo
+    pooled_se_hi  <- res$r$Se$hi
+    
+    # Linee di confidenza incrociate (crosshairs)
+    segments(pooled_fpr_lo, pooled_se, pooled_fpr_hi, pooled_se, 
+             col = res$col, lty = 2, lwd = 1.5)
+    segments(pooled_fpr, pooled_se_lo, pooled_fpr, pooled_se_hi, 
+             col = res$col, lty = 2, lwd = 1.5)
+    
+    # Punto pooled
+    points(pooled_fpr, pooled_se,
+           pch = res$pch, bg = res$col, col = "white", cex = 2.2, lwd = 2)
 
+    # Curva SROC e ellisse
     mada::sroc(res$fit, add = TRUE, sroclty = 1, sroccol = res$col, lwd = 2.5)
     mada::ROCellipse(res$fit, add = TRUE, col = res$col, lty = 2, lwd = 1)
   }
@@ -249,14 +266,15 @@ plot_sroc <- function(gfap, s100b, filename) {
               s100b$Se$est*100, s100b$Sp$est*100),
       "Chance line (AUC=0.5)",
       "Circle area proportional to N",
+      "Crosshairs = 95% CI (Se/Sp)",
       "Dashed ellipse = 95% CI region"
     ),
-    col   = c("#1B4F8A","#1A6B3C","#AAAAAA","black","grey40"),
-    lty   = c(1, 1, 3, NA, 2),
-    lwd   = c(2.5, 2.5, 1, NA, 1),
-    pch   = c(23, 22, NA, 21, NA),
-    pt.bg = c("#1B4F8A","#1A6B3C", NA,"gray90", NA),
-    pt.cex= c(1.5, 1.5, NA, 1, NA),
+    col   = c("#1B4F8A","#1A6B3C","#AAAAAA","black","grey40","grey40"),
+    lty   = c(1, 1, 3, NA, 2, 2),
+    lwd   = c(2.5, 2.5, 1, NA, 1.5, 1),
+    pch   = c(23, 22, NA, 21, NA, NA),
+    pt.bg = c("#1B4F8A","#1A6B3C", NA,"gray90", NA, NA),
+    pt.cex= c(1.5, 1.5, NA, 1, NA, NA),
     bty = "o", bg = "white", box.col = "#CCCCCC", cex = 0.82
   )
 
@@ -388,24 +406,45 @@ plot_funnel <- function(res, col_main, filename) {
   par(mfrow=c(1,2), mar=c(5,4,3,2), oma=c(0,0,3,0))
 
   n_studies <- length(res$data$study)
-  pos_alt <- rep(3, n_studies)
-  pos_alt[seq(2, n_studies, by = 2)] <- 1
-
+  
+  # Calcola cex dinamico in base alla lunghezza dei nomi
+  max_name_len <- max(nchar(res$data$study))
+  label_cex <- ifelse(max_name_len > 20, 0.6, 0.75)
+  label_offset <- 0.8
+  
+  # Posizioni intelligenti per evitare sovrapposizioni
+  # 2 = sinistra, 4 = destra (meglio di 1=sotto, 3=sopra per studi vicini)
+  if (n_studies <= 4) {
+    # Per pochi studi: alterna sinistra/destra in modo più distanziato
+    pos_se <- c(4, 2, 4, 2)[1:n_studies]  # alterna destra/sinistra
+    pos_sp <- c(2, 4, 2, 4)[1:n_studies]  # inverso per specificità
+  } else {
+    # Per più studi: alterna 4 pattern
+    pos_se <- rep(c(4, 2, 4, 2), length.out = n_studies)
+    pos_sp <- rep(c(2, 4, 2, 4), length.out = n_studies)
+  }
+  
   funnel(res$Se$fit,
          main     = "Sensitivity",
          xlab     = "Logit(Sensitivity)",
          col      = col_main,
-         bg       = col_main)
+         bg       = col_main,
+         cex      = 1.3,
+         cex.axis = 0.9,
+         cex.lab  = 1.0)
   text(res$Se$fit$yi, sqrt(res$Se$fit$vi), labels = res$data$study,
-       cex = 0.5, pos = pos_alt, offset = 0.35, col = "grey30")
+       cex = label_cex, pos = pos_se, offset = label_offset, col = "grey20", font = 3)
 
   funnel(res$Sp$fit,
          main     = "Specificity",
          xlab     = "Logit(Specificity)",
          col      = col_main,
-         bg       = col_main)
+         bg       = col_main,
+         cex      = 1.3,
+         cex.axis = 0.9,
+         cex.lab  = 1.0)
   text(res$Sp$fit$yi, sqrt(res$Sp$fit$vi), labels = res$data$study,
-       cex = 0.5, pos = pos_alt, offset = 0.35, col = "grey30")
+       cex = label_cex, pos = pos_sp, offset = label_offset, col = "grey20", font = 3)
 
   mtext(paste("Figure S1.  Funnel Plots \u2014", res$label),
         side=3, line=1.2, outer=TRUE, font=2, cex=1.05)
