@@ -409,8 +409,8 @@ plot_funnel <- function(res, col_main, filename) {
   
   # Calcola cex dinamico in base alla lunghezza dei nomi
   max_name_len <- max(nchar(res$data$study))
-  label_cex <- ifelse(max_name_len > 20, 0.6, 0.75)
-  label_offset <- 0.8
+  label_cex <- ifelse(max_name_len > 20, 0.6, ifelse(n_studies > 5, 0.65, 0.75))
+  label_offset <- ifelse(n_studies > 5, 1.0, 0.8)  # più spazio per più studi
   
   # Posizioni intelligenti per evitare sovrapposizioni
   # 2 = sinistra, 4 = destra (meglio di 1=sotto, 3=sopra per studi vicini)
@@ -419,9 +419,12 @@ plot_funnel <- function(res, col_main, filename) {
     pos_se <- c(4, 2, 4, 2)[1:n_studies]  # alterna destra/sinistra
     pos_sp <- c(2, 4, 2, 4)[1:n_studies]  # inverso per specificità
   } else {
-    # Per più studi: alterna 4 pattern
-    pos_se <- rep(c(4, 2, 4, 2), length.out = n_studies)
-    pos_sp <- rep(c(2, 4, 2, 4), length.out = n_studies)
+    # Per più studi (GFAP): usa pattern personalizzato
+    # Studi: Chayoua, Bazarian, Papa, Lagares, Puravet, Milevoj, Legramante
+    # Posizioni: sinistra, destra, sinistra, destra, sinistra, destra, sinistra
+    # Per i punti vicini in basso, alterna anche verticalmente
+    pos_se <- c(2, 4, 2, 4, 3, 1, 2)[1:n_studies]  # 3=sopra, 1=sotto per punti vicini
+    pos_sp <- c(4, 2, 4, 2, 4, 2, 4)[1:n_studies]  # pattern inverso
   }
   
   funnel(res$Se$fit,
